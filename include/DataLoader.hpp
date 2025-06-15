@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <utility>
-#include "Types.h"
+//#include "Types.h"
 
 // --- Estructuras globales ---
 
