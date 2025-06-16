@@ -1,0 +1,75 @@
+# Makefile for Windows (MinGW/MSYS2)
+
+# Compiler and flags
+CXX = g++
+CXXFLAGS = -std=c++17 -Wall -Wextra -O2
+
+# Directories
+SRCDIR = src
+INCDIR = include
+OBJDIR = obj
+DATADIR = data
+
+# Target executable (Windows)
+TARGET = song_recommender.exe
+
+# Source files
+SOURCES = $(wildcard $(SRCDIR)/*.cpp)
+OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
+
+# Default target
+.PHONY: all
+all: $(TARGET)
+
+# Link object files to create executable
+$(TARGET): $(OBJECTS)
+	$(CXX) $(OBJECTS) -o $@
+
+# Compile source files to object files
+$(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
+	$(CXX) $(CXXFLAGS) -I$(INCDIR) -c $< -o $@
+
+# Create obj directory if it doesn't exist (Windows)
+$(OBJDIR):
+	if not exist $(OBJDIR) mkdir $(OBJDIR)
+
+# Clean compiled files (Windows)
+.PHONY: clean
+clean:
+	if exist $(OBJDIR) rmdir /s /q $(OBJDIR)
+	if exist $(TARGET) del $(TARGET)
+
+# Run the program (Windows)
+.PHONY: run
+run: $(TARGET)
+	$(TARGET)
+
+# Debug build
+.PHONY: debug
+debug: CXXFLAGS += -g -DDEBUG
+debug: clean $(TARGET)
+
+# Create data directory and sample CSV (Windows)
+.PHONY: setup
+setup:
+	if not exist $(DATADIR) mkdir $(DATADIR)
+	@echo Creating sample data file...
+	@echo user_id,song_id,rating > $(DATADIR)\ratings.csv
+	@echo 1,101,4.5 >> $(DATADIR)\ratings.csv
+	@echo 1,102,3.0 >> $(DATADIR)\ratings.csv
+	@echo 2,101,4.0 >> $(DATADIR)\ratings.csv
+	@echo 2,103,5.0 >> $(DATADIR)\ratings.csv
+
+# Show help
+.PHONY: help
+help:
+	@echo Available targets for Windows:
+	@echo   all      - Build the project (default)
+	@echo   clean    - Remove compiled files
+	@echo   run      - Build and run the program
+	@echo   debug    - Build with debug symbols
+	@echo   setup    - Create data directory with sample CSV
+	@echo   help     - Show this help message
+	@echo.
+	@echo Usage:
+	@echo   mingw32-make -f Makefile.win [target]
