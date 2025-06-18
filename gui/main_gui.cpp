@@ -12,73 +12,51 @@
 #include <sstream>
 #include <vector>
 #include <map>
+#include <algorithm>
+#include <iomanip>
 
-#define FONT_PATH "gui/OpenSans-Regular.ttf"
+#define FONT_PATH "gui/OpenSans-Reguar.ttf"
 
-void mostrarEncabezado(Font font, int modo) {
+void extraerColumnas(const std::string& fila, int modo, std::string& col1, std::string& col2) {
+    std::istringstream iss(fila);
     if (modo == 1) {
-        DrawTextEx(font, "ID Canción", (Vector2){60, 142}, 16, 1, DARKGRAY);
-        DrawTextEx(font, "Puntaje",    (Vector2){230, 142}, 16, 1, DARKGRAY);
+        std::string palabra;
+        int id, puntaje;
+        iss >> palabra >> palabra >> id >> palabra >> palabra >> puntaje;
+        col1 = std::to_string(id);
+        col2 = std::to_string(puntaje);
     } else if (modo == 2) {
-        DrawTextEx(font, "ID Canción", (Vector2){60, 142}, 16, 1, DARKGRAY);
-        DrawTextEx(font, "Promedio",   (Vector2){230, 142}, 16, 1, DARKGRAY);
+        std::string palabra;
+        int id;
+        float promedio;
+        iss >> palabra >> id >> palabra >> promedio;
+        col1 = std::to_string(id);
+        char buffer[16]; 
+        snprintf(buffer, sizeof(buffer), "%.2f", promedio);
+        col2 = buffer;
     } else if (modo == 3) {
-        DrawTextEx(font, "ID Usuario", (Vector2){60, 142}, 16, 1, DARKGRAY);
-        DrawTextEx(font, "Similitud",  (Vector2){230, 142}, 16, 1, DARKGRAY);
-    } else if (modo == 4) {
-        DrawTextEx(font, "ID Canción",      (Vector2){60, 142}, 16, 1, DARKGRAY);
-        DrawTextEx(font, "Recomendación",   (Vector2){230, 142}, 16, 1, DARKGRAY);
-    }
-}
-
-void mostrarTabla(Font font, int modo, std::vector<std::string>& resultados) {
-    for (size_t i = 0; i < resultados.size(); i++) {
-        int y = 165 + (int)i * 22;
-        std::string col1, col2;
-
-        std::istringstream iss(resultados[i]);
-        if (modo == 1) {
-            int id, punt;
-            iss.ignore(8); // "Canción "
-            iss >> id;
-            iss.ignore(11); // "   Puntaje: "
-            iss >> punt;
-            col1 = std::to_string(id);
-            col2 = std::to_string(punt);
-        } else if (modo == 2) {
-            int id;
-            float promedio;
-            iss.ignore(8); // "Canción "
-            iss >> id;
-            iss.ignore(12); // "    Promedio: "
-            iss >> promedio;
-            col1 = std::to_string(id);
-            char buffer[16]; snprintf(buffer, sizeof(buffer), "%.2f", promedio);
-            col2 = buffer;
-        } else if (modo == 3) {
-            int id, simil;
-            iss.ignore(8); // "Usuario "
-            iss >> id;
-            iss.ignore(12); // "   Similitud: "
-            iss >> simil;
-            col1 = std::to_string(id);
-            col2 = std::to_string(simil) + "%";
-        } else if (modo == 4) {
-            int id, rec;
-            iss.ignore(8); // "Canción "
-            iss >> id;
-            iss.ignore(17); // "   Recomendación: "
-            iss >> rec;
-            col1 = std::to_string(id);
-            col2 = std::to_string(rec) + "%";
+        size_t pos1 = fila.find("Usuario ");
+        size_t pos2 = fila.find(" → Similitud: ");
+        if (pos1 != std::string::npos && pos2 != std::string::npos) {
+            std::string idStr = fila.substr(pos1 + 8, pos2 - pos1 - 8);
+            std::string similStr = fila.substr(pos2 + 14);
+            similStr = similStr.substr(0, similStr.find("%"));
+            col1 = idStr;
+            col2 = similStr + "%";
         }
-        DrawTextEx(font, col1.c_str(), (Vector2){60, (float)y}, 16, 1, BLACK);
-        DrawTextEx(font, col2.c_str(), (Vector2){230, (float)y}, 16, 1, BLACK);
+    } else if (modo == 4) {
+        // Ahora solo mostramos el ID de canción, sin recomendación
+        size_t pos1 = fila.find("Canción ");
+        if (pos1 != std::string::npos) {
+            std::string idStr = fila.substr(pos1 + 8);
+            col1 = idStr;
+            col2 = ""; // No hay segunda columna
+        }
     }
 }
 
 int main() {
-    if (!cargarCSV("../data/ratings.csv")) {
+    if (!cargarCSV("data/ratings.csv")) {
         std::cerr << "Error al cargar el archivo CSV.\n";
         return 1;
     }
@@ -87,19 +65,31 @@ int main() {
 
     InitWindow(700, 420, "Song Recommender - GUI");
     SetTargetFPS(60);
-    Font customFont = LoadFont(FONT_PATH);
-    GuiSetFont(customFont);
+
+    Font customFont = GetFontDefault();
+    if (FileExists(FONT_PATH)) {
+        customFont = LoadFont(FONT_PATH);
+        GuiSetFont(customFont);
+    }
 
     char usuarioID[16] = "";
     char nTop[8] = "5";
-    char nSimilares[8] = "5";
-    bool usuarioID_edit = false, nTop_edit = false, nSimilares_edit = false;
+    bool usuarioID_edit = false, nTop_edit = false;
 
     int modo = 0;
     std::vector<std::string> resultados;
     std::string mensajeError;
 
+    Rectangle panelRect = { 20, 110, 660, 200 };
+    Vector2 scroll = { 0, 0 };
+
     while (!WindowShouldClose()) {
+        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+            Vector2 mousePos = GetMousePosition();
+            if (!CheckCollisionPointRec(mousePos, (Rectangle){140, 55, 80, 20})) usuarioID_edit = false;
+            if (!CheckCollisionPointRec(mousePos, (Rectangle){350, 55, 50, 20})) nTop_edit = false;
+        }
+
         BeginDrawing();
         ClearBackground(RAYWHITE);
 
@@ -107,104 +97,138 @@ int main() {
         DrawTextEx(customFont, "Ingrese datos para la acción seleccionada:", (Vector2){30, 28}, 18, 1, DARKGRAY);
 
         GuiLabel((Rectangle){30, 55, 110, 20}, "ID de Usuario:");
-        if (GuiTextBox((Rectangle){140, 55, 80, 20}, usuarioID, 16, usuarioID_edit))
-            usuarioID_edit = true;
-        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){140, 55, 80, 20}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            usuarioID_edit = true; nTop_edit = false; nSimilares_edit = false;
-        }
+        if (GuiTextBox((Rectangle){140, 55, 80, 20}, usuarioID, 16, usuarioID_edit)) usuarioID_edit = !usuarioID_edit;
 
-        GuiLabel((Rectangle){240, 55, 100, 20}, "N (para Top o Similares):");
-        if (GuiTextBox((Rectangle){350, 55, 50, 20}, nTop, 8, nTop_edit))
-            nTop_edit = true;
-        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){350, 55, 50, 20}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            usuarioID_edit = false; nTop_edit = true; nSimilares_edit = false;
-        }
+        GuiLabel((Rectangle){240, 55, 100, 20}, "N (Top/Similares):");
+        if (GuiTextBox((Rectangle){350, 55, 50, 20}, nTop, 8, nTop_edit)) nTop_edit = !nTop_edit;
 
-        if (GuiTextBox((Rectangle){410, 55, 50, 20}, nSimilares, 8, nSimilares_edit))
-            nSimilares_edit = true;
-        if (CheckCollisionPointRec(GetMousePosition(), (Rectangle){410, 55, 50, 20}) && IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
-            usuarioID_edit = false; nTop_edit = false; nSimilares_edit = true;
-        }
-
-        DrawRectangle(20, 110, 660, 200, LIGHTGRAY);
         DrawTextEx(customFont, "Resultados:", (Vector2){30, 118}, 16, 1, DARKGRAY);
 
-        if (!mensajeError.empty()) {
-            DrawTextEx(customFont, mensajeError.c_str(), (Vector2){60, 160}, 16, 1, RED);
-        } else if (!resultados.empty()) {
-            mostrarEncabezado(customFont, modo);
-            mostrarTabla(customFont, modo, resultados);
-        } else {
-            DrawTextEx(customFont, "Sin resultados.", (Vector2){60, 160}, 16, 1, GRAY);
+        int totalRows = (int)resultados.size();
+        Rectangle contentRect = { 0, 0, 640.0f, (float)(22 * std::max(totalRows + 2, 10)) };
+        Rectangle view = {0};
+        GuiScrollPanel(panelRect, NULL, contentRect, &scroll, &view);
+
+        BeginScissorMode(panelRect.x, panelRect.y, panelRect.width, panelRect.height);
+
+        float headerY = panelRect.y + 5 + scroll.y;
+        if (modo == 1) {
+            DrawTextEx(customFont, "ID Canción", (Vector2){panelRect.x + 40, headerY}, 16, 1, DARKBLUE);
+            DrawTextEx(customFont, "Puntaje",    (Vector2){panelRect.x + 210, headerY}, 16, 1, DARKBLUE);
+        } else if (modo == 2) {
+            DrawTextEx(customFont, "ID Canción", (Vector2){panelRect.x + 40, headerY}, 16, 1, DARKBLUE);
+            DrawTextEx(customFont, "Promedio",   (Vector2){panelRect.x + 210, headerY}, 16, 1, DARKBLUE);
+        } else if (modo == 3) {
+            DrawTextEx(customFont, "ID Usuario", (Vector2){panelRect.x + 40, headerY}, 16, 1, DARKBLUE);
+            DrawTextEx(customFont, "Similitud",  (Vector2){panelRect.x + 210, headerY}, 16, 1, DARKBLUE);
+        } else if (modo == 4) {
+            DrawTextEx(customFont, "ID Canción", (Vector2){panelRect.x + 40, headerY}, 16, 1, DARKBLUE);
+            // No segunda columna
         }
 
-        // ----------- BOTONES: cada uno usa lógica real -----------
-        if (GuiButton((Rectangle){30, 330, 140, 32}, "Ver Canciones de Usuario")) {
+        if (!mensajeError.empty()) {
+            DrawTextEx(customFont, mensajeError.c_str(), (Vector2){panelRect.x + 40, panelRect.y + 40 + scroll.y}, 16, 1, RED);
+        } else if (!resultados.empty()) {
+            for (int i = 0; i < totalRows; i++) {
+                float y = panelRect.y + 28 + i * 22 + scroll.y;
+                if (y >= panelRect.y - 22 && y <= panelRect.y + panelRect.height) {
+                    std::string col1, col2;
+                    extraerColumnas(resultados[i], modo, col1, col2);
+                    DrawTextEx(customFont, col1.c_str(), (Vector2){panelRect.x + 40, y}, 16, 1, BLACK);
+                    if (modo != 4 && !col2.empty())
+                        DrawTextEx(customFont, col2.c_str(), (Vector2){panelRect.x + 210, y}, 16, 1, BLACK);
+                }
+            }
+        } else {
+            DrawTextEx(customFont, "Sin resultados.", (Vector2){panelRect.x + 40, panelRect.y + 40 + scroll.y}, 16, 1, GRAY);
+        }
+        EndScissorMode();
+
+        if (GuiButton((Rectangle){30, 330, 140, 32}, "Ver Canciones Usuario")) {
             modo = 1;
             resultados.clear();
             mensajeError.clear();
             int usuario = atoi(usuarioID);
-            auto canciones = getCancionesDeUsuario(usuario);
-            if (canciones.empty()) {
-                mensajeError = "Usuario no encontrado o sin canciones.";
+            if (usuario <= 0) {
+                mensajeError = "Ingrese un ID de usuario válido.";
             } else {
-                for (auto& [idCancion, puntaje] : canciones) {
-                    std::ostringstream ss;
-                    ss << "Canción " << idCancion << "   Puntaje: " << puntaje;
-                    resultados.push_back(ss.str());
+                auto canciones = getCancionesDeUsuario(usuario);
+                if (canciones.empty()) {
+                    mensajeError = "Usuario no encontrado.";
+                } else {
+                    for (auto& [idCancion, puntaje] : canciones) {
+                        std::ostringstream ss;
+                        ss << "   Canción ID: " << idCancion << " - Puntaje: " << puntaje;
+                        resultados.push_back(ss.str());
+                    }
                 }
             }
+            scroll.y = 0;
         }
+
         if (GuiButton((Rectangle){190, 330, 120, 32}, "Top N Canciones")) {
             modo = 2;
             resultados.clear();
             mensajeError.clear();
             int N = atoi(nTop);
+            if (N <= 0) N = 10;
             auto topCanciones = obtenerTopNCanciones(N);
             if (topCanciones.empty()) {
                 mensajeError = "No hay canciones suficientes.";
             } else {
                 for (const auto& [idCancion, promedio] : topCanciones) {
                     std::ostringstream ss;
-                    ss << "Canción " << idCancion << "    Promedio: " << promedio;
+                    ss << "Canción " << idCancion << " → Promedio: " << std::fixed << std::setprecision(2) << promedio;
                     resultados.push_back(ss.str());
                 }
             }
+            scroll.y = 0;
         }
-        if (GuiButton((Rectangle){330, 330, 170, 32}, "Ver Usuarios Similares")) {
+
+        if (GuiButton((Rectangle){330, 330, 170, 32}, "Usuarios Similares")) {
             modo = 3;
             resultados.clear();
             mensajeError.clear();
             int usuario = atoi(usuarioID);
-            int N = atoi(nSimilares);
-            auto usuariosSimilares = obtenerUsuariosSimilares(usuario, similitudes, N);
-            if (usuariosSimilares.empty()) {
-                mensajeError = "No se encontraron usuarios similares.";
+            int N = atoi(nTop);
+            if (usuario <= 0) {
+                mensajeError = "Ingrese un ID de usuario válido.";
             } else {
-                for (const auto& [idUsuario, similitud] : usuariosSimilares) {
-                    std::ostringstream ss;
-                    ss << "Usuario " << idUsuario << "   Similitud: " << (int)(similitud*100) << "%";
-                    resultados.push_back(ss.str());
+                if (N <= 0) N = 6;
+                auto usuariosSimilares = obtenerUsuariosSimilares(usuario, similitudes, N);
+                if (usuariosSimilares.empty()) {
+                    mensajeError = "No se encontraron usuarios similares.";
+                } else {
+                    for (const auto& [idUsuario, similitud] : usuariosSimilares) {
+                        std::ostringstream ss;
+                        ss << "Usuario " << idUsuario << " → Similitud: " << (int)(similitud*100) << "%";
+                        resultados.push_back(ss.str());
+                    }
                 }
             }
+            scroll.y = 0;
         }
+
         if (GuiButton((Rectangle){520, 330, 160, 32}, "Recomendar Canciones")) {
             modo = 4;
             resultados.clear();
             mensajeError.clear();
             int usuario = atoi(usuarioID);
-            auto recomendaciones = recomendarCanciones(usuario, similitudes, 10);
-            if (recomendaciones.empty()) {
-                mensajeError = "No hay recomendaciones para este usuario.";
+            if (usuario <= 0) {
+                mensajeError = "Ingrese un ID de usuario válido.";
             } else {
-                for (const auto& idCancion : recomendaciones) {
-                    std::ostringstream ss;
-                    // Si quieres mostrar el score:
-                    float score = calcularPuntuacionPonderada(usuario, idCancion, similitudes);
-                    ss << "Canción " << idCancion << "   Recomendación: " << (int)(score * 100) << "%";
-                    resultados.push_back(ss.str());
+                auto recomendaciones = recomendarCanciones(usuario, similitudes, 10);
+                if (recomendaciones.empty()) {
+                    mensajeError = "No hay recomendaciones para este usuario.";
+                } else {
+                    for (const auto& idCancion : recomendaciones) {
+                        std::ostringstream ss;
+                        ss << "Canción " << idCancion;
+                        resultados.push_back(ss.str());
+                    }
                 }
             }
+            scroll.y = 0;
         }
 
         if (GuiButton((Rectangle){560, 370, 120, 32}, "Salir")) { break; }
@@ -212,7 +236,9 @@ int main() {
         EndDrawing();
     }
 
-    UnloadFont(customFont);
+    if (customFont.texture.id != GetFontDefault().texture.id) {
+        UnloadFont(customFont);
+    }
     CloseWindow();
     return 0;
 }
