@@ -4,6 +4,11 @@
 CXX = g++
 CXXFLAGS = -std=c++17 -Wall -Wextra -O2
 
+# --- MODIFICACIÓN CLAVE ---
+# Banderas del enlazador (Linker):
+# -pthread : ¡ESENCIAL! Enlaza la librería de hilos POSIX (Pthreads) que std::thread utiliza.
+LDFLAGS = -pthread
+
 # Directories
 SRCDIR = src
 INCDIR = include
@@ -22,8 +27,9 @@ OBJECTS = $(patsubst $(SRCDIR)/%.cpp,$(OBJDIR)/%.o,$(SOURCES))
 all: $(TARGET)
 
 # Link object files to create executable
+# --- LÍNEA MODIFICADA ---
 $(TARGET): $(OBJECTS)
-	$(CXX) $(OBJECTS) -o $@
+	$(CXX) $(OBJECTS) -o $@ $(LDFLAGS)
 
 # Compile source files to object files
 $(OBJDIR)/%.o: $(SRCDIR)/%.cpp | $(OBJDIR)
@@ -54,11 +60,11 @@ debug: clean $(TARGET)
 setup:
 	if not exist $(DATADIR) mkdir $(DATADIR)
 	@echo Creating sample data file...
-	@echo user_id,song_id,rating > $(DATADIR)\ratings.csv
-	@echo 1,101,4.5 >> $(DATADIR)\ratings.csv
-	@echo 1,102,3.0 >> $(DATADIR)\ratings.csv
-	@echo 2,101,4.0 >> $(DATADIR)\ratings.csv
-	@echo 2,103,5.0 >> $(DATADIR)\ratings.csv
+	@echo user_id,song_id,rating > $(DATADIR)\ratings_big.csv
+	@echo 1,101,4.5 >> $(DATADIR)\ratings_big.csv
+	@echo 1,102,3.0 >> $(DATADIR)\ratings_big.csv
+	@echo 2,101,4.0 >> $(DATADIR)\ratings_big.csv
+	@echo 2,103,5.0 >> $(DATADIR)\ratings_big.csv
 
 # Show help
 .PHONY: help

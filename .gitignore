@@ -9,7 +9,7 @@ song_recommender
 *.out
 
 # CSV data files
-data/ratings.csv
+data/ratings_big.csv
 data/*.csv
 
 # IDE and editor files

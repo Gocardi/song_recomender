@@ -59,7 +59,7 @@ mingw32-make -f Makefile.win clean
 ```
 song_recommender/
 ├── data/
-│   └── ratings.csv              # Datos: usuario_id,cancion_id,rating
+│   └── ratings_big.csv              # Datos: usuario_id,cancion_id,rating
 ├── include/
 │   ├── DataLoader.hpp           # Carga y parseo del CSV
 │   ├── TopSongs.hpp             # Top N canciones más valoradas
@@ -78,7 +78,7 @@ song_recommender/
 
 ## 📊 Formato de Datos
 
-El archivo `data/ratings.csv` debe tener el formato:
+El archivo `data/ratings_big.csv` debe tener el formato:
 ```csv
 user_id,song_id,rating
 1,101,4.5
@@ -122,7 +122,7 @@ user_id,song_id,rating
 
 ## 💡 Uso del Sistema
 
-1. **Preparar datos**: Colocar archivo CSV en `data/ratings.csv`
+1. **Preparar datos**: Colocar archivo CSV en `data/ratings_big.csv`
 2. **Compilar**: `make`
 3. **Ejecutar**: `./song_recommender`
 4. **Navegar**: Usar el menú interactivo para explorar funcionalidades

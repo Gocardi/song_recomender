@@ -56,12 +56,12 @@ void extraerColumnas(const std::string& fila, int modo, std::string& col1, std::
 }
 
 int main() {
-    if (!cargarCSV("data/ratings.csv")) {
+    if (!cargarCSV("data/ratings_big.csv")) {
         std::cerr << "Error al cargar el archivo CSV.\n";
         return 1;
     }
 
-    auto similitudes = calcularSimilitudesGlobales();
+    auto similitudes = calcularSimilitudesGlobalesParalelo();
 
     InitWindow(700, 420, "Song Recommender - GUI");
     SetTargetFPS(60);

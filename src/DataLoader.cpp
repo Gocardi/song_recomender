@@ -1,15 +1,12 @@
-// src/DataLoader.cpp
 #include "DataLoader.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 
-// --- Definiciones de las estructuras globales ---
 std::unordered_map<int, std::vector<std::pair<int, int>>> usuario_a_canciones;
 std::unordered_map<int, std::vector<std::pair<int, int>>> cancion_a_usuarios;
 std::unordered_map<int, std::unordered_map<int, int>> matriz_usuario_cancion;
 
-// --- Funciones ---
 
 bool cargarCSV(const std::string& rutaArchivo) {
     std::ifstream archivo(rutaArchivo);
@@ -29,20 +26,23 @@ bool cargarCSV(const std::string& rutaArchivo) {
         std::string token;
         int idUsuario, idCancion, puntaje;
 
-        // Parsear los tres campos
-        if (!std::getline(ss, token, ',')) continue;
-        idUsuario = std::stoi(token);
+        try {
+            if (!std::getline(ss, token, ',')) continue;
+            idUsuario = std::stoi(token);
 
-        if (!std::getline(ss, token, ',')) continue;
-        idCancion = std::stoi(token);
+            if (!std::getline(ss, token, ',')) continue;
+            idCancion = std::stoi(token);
 
-        if (!std::getline(ss, token, ',')) continue;
-        puntaje = std::stoi(token);
+            if (!std::getline(ss, token, ',')) continue;
+            puntaje = std::stoi(token);
 
-        // Rellenar las estructuras
-        usuario_a_canciones[idUsuario].emplace_back(idCancion, puntaje);
-        cancion_a_usuarios[idCancion].emplace_back(idUsuario, puntaje);
-        matriz_usuario_cancion[idUsuario][idCancion] = puntaje;
+            usuario_a_canciones[idUsuario].emplace_back(idCancion, puntaje);
+            cancion_a_usuarios[idCancion].emplace_back(idUsuario, puntaje);
+            matriz_usuario_cancion[idUsuario][idCancion] = puntaje;
+        } catch (const std::invalid_argument& e) {
+
+        } catch (const std::out_of_range& e) {
+        }
     }
 
     archivo.close();
@@ -51,23 +51,23 @@ bool cargarCSV(const std::string& rutaArchivo) {
 
 std::vector<std::pair<int, int>> getCancionesDeUsuario(int idUsuario) {
     if (usuario_a_canciones.count(idUsuario))
-        return usuario_a_canciones[idUsuario];
+        return usuario_a_canciones.at(idUsuario);
     else
         return {};
 }
 
 std::vector<std::pair<int, int>> getUsuariosDeCancion(int idCancion) {
     if (cancion_a_usuarios.count(idCancion))
-        return cancion_a_usuarios[idCancion];
+        return cancion_a_usuarios.at(idCancion);
     else
         return {};
 }
 
 int getPuntaje(int idUsuario, int idCancion) {
     if (matriz_usuario_cancion.count(idUsuario)) {
-        auto& inner = matriz_usuario_cancion[idUsuario];
+        const auto& inner = matriz_usuario_cancion.at(idUsuario);
         if (inner.count(idCancion))
-            return inner[idCancion];
+            return inner.at(idCancion);
     }
     return -1;
 }

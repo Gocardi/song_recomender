@@ -1,4 +1,3 @@
-// include/DataLoader.hpp
 #ifndef DATALOADER_HPP
 #define DATALOADER_HPP
 
@@ -6,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 #include <utility>
-//#include "Types.h"
 
 // --- Estructuras globales ---
 
